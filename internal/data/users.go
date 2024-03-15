@@ -16,6 +16,8 @@ var (
 	ErrDuplicateUsername = errors.New("duplicate username")
 )
 
+var AnonymousUser = &User{}
+
 type User struct {
 	ID        int64     `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
@@ -25,6 +27,10 @@ type User struct {
 	Password  password  `json:"-"`
 	Activated bool      `json:"activated"`
 	Version   int       `json:"-"`
+}
+
+func (u *User) IsAnonymous() bool {
+	return u == AnonymousUser
 }
 
 type password struct {
@@ -64,6 +70,13 @@ func ValidateEmail(v *validator.Validator, email string) {
 	v.Check(validator.Matches(email, validator.EmailRX), "email", "must be a valid email address")
 }
 
+func ValidateUsername(v *validator.Validator, username string) {
+	v.Check(username != "", "username", "must be provided")
+	v.Check(len(username) >= 6, "username", "must be at least 6 bytes long")
+	v.Check(len(username) <= 32, "username", "must not be more than 32 bytes long")
+
+}
+
 func ValidatePasswordPlaintext(v *validator.Validator, password string) {
 	v.Check(password != "", "password", "must be provided")
 	v.Check(len(password) >= 8, "password", "must be at least 8 bytes long")
@@ -74,8 +87,7 @@ func ValidateUser(v *validator.Validator, user *User) {
 	v.Check(user.Name != "", "name", "must be provided")
 	v.Check(len(user.Name) <= 500, "name", "must not be more than 500 bytes long")
 
-	v.Check(user.Username != "", "username", "must be provided")
-	v.Check(len(user.Username) <= 32, "username", "must not be more than 32 bytes long")
+	ValidateUsername(v, user.Username)
 
 	ValidateEmail(v, user.Email)
 
