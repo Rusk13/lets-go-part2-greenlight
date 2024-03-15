@@ -8,6 +8,7 @@ import (
 	"greenlight.olegmonabaka.net/internal/jsonlog"
 	"greenlight.olegmonabaka.net/internal/mailer"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -33,6 +34,10 @@ type config struct {
 		username string
 		password string
 		sender   string
+	}
+
+	cors struct {
+		trustedOrigins []string
 	}
 }
 
@@ -63,6 +68,12 @@ func main() {
 	flag.StringVar(&cfg.smtp.username, "smtp-username", "0c220a7c44365a", "SMTP Username")
 	flag.StringVar(&cfg.smtp.password, "smtp-password", "7f84a8be3e8686", "SMTP password")
 	flag.StringVar(&cfg.smtp.sender, "smtp-sender", "Greenlight <no-reply@greenlight.olegmonabaka.net>", "SMTP sender")
+
+	flag.Func("cors-trusted-origins", "Trusted CORS origins (space separated)", func(val string) error {
+		cfg.cors.trustedOrigins = strings.Fields(val)
+		return nil
+	})
+
 	flag.Parse()
 	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
 	db, err := openDB(cfg)
