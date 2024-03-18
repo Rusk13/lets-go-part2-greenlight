@@ -4,10 +4,12 @@ import (
 	"context"
 	"expvar"
 	"flag"
+	"fmt"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"greenlight.olegmonabaka.net/internal/data"
 	"greenlight.olegmonabaka.net/internal/jsonlog"
 	"greenlight.olegmonabaka.net/internal/mailer"
+	"greenlight.olegmonabaka.net/internal/vcs"
 	"os"
 	"runtime"
 	"strings"
@@ -15,7 +17,7 @@ import (
 	"time"
 )
 
-const version = "1.0.0"
+var version = vcs.Version()
 
 type config struct {
 	port int
@@ -57,7 +59,7 @@ func main() {
 
 	flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production")
 
-	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("GREENLIGHT_DB_DSN"), "PostgresSQL DSN")
+	flag.StringVar(&cfg.db.dsn, "db-dsn", "", "PostgresSQL DSN")
 	flag.IntVar(&cfg.db.maxOpenConns, "db-max-open-conns", 25, "PostgresSQL max open connections")
 	flag.StringVar(&cfg.db.maxIdleTime, "db-max-idle-time", "15m", "PostgresSQL max connection idle time")
 
@@ -76,7 +78,14 @@ func main() {
 		return nil
 	})
 
+	displayVersion := flag.Bool("version", false, "Display version and exit")
+
 	flag.Parse()
+
+	if *displayVersion {
+		fmt.Printf("Version:\t%s\n", version)
+		os.Exit(0)
+	}
 	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
 	db, err := openDB(cfg)
 	if err != nil {

@@ -45,7 +45,9 @@ func (m Mailer) Send(recipient, templateFile string, data any) error {
 
 	htmlBody := new(bytes.Buffer)
 	err = tmpl.ExecuteTemplate(htmlBody, "htmlBody", data)
-
+	if err != nil {
+		return err
+	}
 	msg := mail.NewMessage()
 	msg.SetHeader("To", recipient)
 	msg.SetHeader("From", m.sender)
