@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"expvar"
 	"flag"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"greenlight.olegmonabaka.net/internal/data"
 	"greenlight.olegmonabaka.net/internal/jsonlog"
 	"greenlight.olegmonabaka.net/internal/mailer"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -85,6 +87,28 @@ func main() {
 
 	logger.PrintInfo("database connection pool established", nil)
 
+	//metrics
+	expvar.NewString("version").Set(version)
+
+	expvar.Publish("goroutines", expvar.Func(func() any {
+		return runtime.NumGoroutine()
+	}))
+
+	expvar.Publish("database", expvar.Func(func() any {
+		var dbStats struct {
+			MaxOpenConnections int32
+			OpenConnections    int32
+			Idle               int32
+		}
+		dbStats.MaxOpenConnections = db.Stat().MaxConns()
+		dbStats.OpenConnections = db.Stat().TotalConns()
+		dbStats.Idle = db.Stat().IdleConns()
+		return dbStats
+	}))
+
+	expvar.Publish("timestamp", expvar.Func(func() any {
+		return time.Now().Unix()
+	}))
 	app := &application{
 		config: cfg,
 		logger: logger,
@@ -111,7 +135,6 @@ func openDB(cfg config) (*pgxpool.Pool, error) {
 	}
 
 	db.Config().MaxConnIdleTime = duration
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	err = db.Ping(ctx)
